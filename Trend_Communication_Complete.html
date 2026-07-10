@@ -1,5 +1,4 @@
-
-<!DOCTYPE index.html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -108,39 +107,3 @@ a.click();
 function restore(e){
 let r=new FileReader();
 r.onload=()=>{db=JSON.parse(r.result);save();alert('Restored');};
-r.readAsText(e.target.files[0]);
-}
-
-function copyReport(){
-navigator.clipboard.writeText(reports.innerText);
-alert('Report copied');
-}
-
-function render(){
-products.innerHTML="<tr><th>Product</th><th>Start</th><th>Remain</th><th>Sold</th></tr>";
-db.p.forEach(x=>products.innerHTML+=`<tr><td>${x.n}</td><td>${x.start}</td><td>${x.q}</td><td>${x.sold}</td></tr>`);
-
-summary.innerHTML="<tr><th>Product</th><th>Qty Sold</th><th>Profit</th></tr>";
-db.p.forEach(x=>summary.innerHTML+=`<tr><td>${x.n}</td><td>${x.sold}</td><td>${x.profit}</td></tr>`);
-
-history.innerHTML="<tr><th>Date</th><th>Product</th><th>Sale</th><th>Profit</th></tr>";
-db.s.slice().reverse().forEach(x=>history.innerHTML+=`<tr><td>${x.d}</td><td>${x.n}</td><td>${x.price}</td><td>${x.profit}</td></tr>`);
-
-ledger.innerHTML="<tr><th>Name</th><th>Amount</th><th>Status</th><th>Action</th></tr>";
-db.l.forEach((x,i)=>ledger.innerHTML+=`<tr><td>${x.name}</td><td>${x.amount}</td><td>${x.status}</td><td>${x.status=="Unpaid"?'<button onclick="markPaid('+i+')">Paid</button>':''}</td></tr>`);
-
-let sp=db.p.reduce((a,b)=>a+b.profit,0);
-let tp=db.t.reduce((a,b)=>a+b.profit,0);
-let ex=db.e.reduce((a,b)=>a+b.amount,0);
-let ud=db.l.filter(x=>x.status=="Unpaid").reduce((a,b)=>a+b.amount,0);
-
-dash.innerHTML=`Sales Profit: ${sp}<br>Transaction Profit: ${tp}<br>Expenses: ${ex}<br>Outstanding Udhaar: ${ud}<br><b>Net Profit: ${sp+tp-ex}</b>`;
-
-reports.innerHTML=`Daily/Weekly/Monthly Summary<br>Sales Profit: ${sp}<br>Transaction Profit: ${tp}<br>Net Profit: ${sp+tp-ex}`;
-
-let low=db.p.filter(x=>x.q<=3);
-alerts.innerHTML=low.length?low.map(x=>x.n+" ("+x.q+" left)").join("<br>"):"No low stock";
-}
-render();
-</script>
-</body></html>
