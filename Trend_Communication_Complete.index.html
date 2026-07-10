@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trend Communication Complete</title>
+<style>
+body{font-family:Arial;margin:10px}
+.sec{border:1px solid #ccc;padding:10px;margin:8px 0}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:4px;font-size:12px}
+input,button,select{padding:6px;margin:3px}
+</style>
+</head>
+<body>
+<h2>Trend Communication Complete</h2>
+
+<div class="sec"><h3>Dashboard</h3><div id="dash"></div></div>
+
+<div class="sec">
+<h3>Add Product</h3>
+<input id="pn" placeholder="Product">
+<input id="pq" type="number" placeholder="Qty">
+<input id="pc" type="number" placeholder="Cost Price">
+<button onclick="addProduct()">Add</button>
+</div>
+
+<div class="sec">
+<h3>Sale</h3>
+<input id="sn" placeholder="Product">
+<input id="sp" type="number" placeholder="Selling Price">
+<button onclick="cashSale()">Cash Sale</button><br>
+<input id="cust" placeholder="Customer Name (Udhaar)">
+<button onclick="udhaarSale()">Udhaar Sale</button>
+</div>
+
+<div class="sec">
+<h3>EasyPaisa / JazzCash</h3>
+<select id="tt"><option>Cash In</option><option>Cash Out</option></select>
+<input id="ta" type="number" placeholder="Amount">
+<input id="tp" type="number" placeholder="Commission Profit">
+<button onclick="addTxn()">Add</button>
+</div>
+
+<div class="sec">
+<h3>Expense</h3>
+<input id="en" placeholder="Expense">
+<input id="ea" type="number" placeholder="Amount">
+<button onclick="addExpense()">Add</button>
+</div>
+
+<div class="sec">
+<h3>Search Product</h3>
+<input id="search" onkeyup="searchProduct()" placeholder="Search">
+<div id="searchResult"></div>
+</div>
+
+<div class="sec"><h3>Low Stock Alerts</h3><div id="alerts"></div></div>
+<div class="sec"><h3>Products</h3><table id="products"></table></div>
+<div class="sec"><h3>Sales Summary</h3><table id="summary"></table></div>
+<div class="sec"><h3>Sales History</h3><table id="history"></table></div>
+<div class="sec"><h3>Ledger</h3><table id="ledger"></table></div>
+<div class="sec"><h3>Reports</h3><div id="reports"></div><button onclick="copyReport()">Copy Report</button></div>
+<div class="sec"><button onclick="backup()">Backup</button> <input type="file" onchange="restore(event)"></div>
+
+<script>
+let db=JSON.parse(localStorage.getItem("trend_complete")||'{"p":[],"s":[],"t":[],"e":[],"l":[]}');
+
+function save(){localStorage.setItem("trend_complete",JSON.stringify(db));render();}
+
+function addProduct(){
+db.p.push({n:pn.value,q:+pq.value,start:+pq.value,c:+pc.value,sold:0,profit:0});
+save();
+}
+
+function saleCore(udhaar){
+let p=db.p.find(x=>x.n===sn.value);
+if(!p||p.q<=0){alert("Product not found/out of stock");return;}
+p.q--; p.sold++;
+let pr=(+sp.value)-p.c;
+p.profit+=pr;
+db.s.push({d:new Date().toLocaleDateString(),n:p.n,price:+sp.value,profit:pr});
+if(udhaar) db.l.push({name:cust.value,amount:+sp.value,status:"Unpaid"});
+save();
+}
+function cashSale(){saleCore(false);}
+function udhaarSale(){saleCore(true);}
+
+function addTxn(){db.t.push({type:tt.value,amount:+ta.value,profit:+tp.value});save();}
+function addExpense(){db.e.push({name:en.value,amount:+ea.value});save();}
+function markPaid(i){db.l[i].status="Paid";save();}
+
+function searchProduct(){
+let q=search.value.toLowerCase();
+let p=db.p.find(x=>x.n.toLowerCase().includes(q));
+searchResult.innerHTML=p?`${p.n} | Stock:${p.q} | Sold:${p.sold}`:"";
+}
+
+function backup(){
+let blob=new Blob([JSON.stringify(db)],{type:'application/json'});
+let a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download='trend_backup.json';
+a.click();
+}
+
+function restore(e){
+let r=new FileReader();
+r.onload=()=>{db=JSON.parse(r.result);save();alert('Restored');};
+r.readAsText(e.target.files[0]);
+}
+
+function copyReport(){
+navigator.clipboard.writeText(reports.innerText);
+alert('Report copied');
+}
+
+function render(){
+products.innerHTML="<tr><th>Product</th><th>Start</th><th>Remain</th><th>Sold</th></tr>";
+db.p.forEach(x=>products.innerHTML+=`<tr><td>${x.n}</td><td>${x.start}</td><td>${x.q}</td><td>${x.sold}</td></tr>`);
+
+summary.innerHTML="<tr><th>Product</th><th>Qty Sold</th><th>Profit</th></tr>";
+db.p.forEach(x=>summary.innerHTML+=`<tr><td>${x.n}</td><td>${x.sold}</td><td>${x.profit}</td></tr>`);
+
+history.innerHTML="<tr><th>Date</th><th>Product</th><th>Sale</th><th>Profit</th></tr>";
+db.s.slice().reverse().forEach(x=>history.innerHTML+=`<tr><td>${x.d}</td><td>${x.n}</td><td>${x.price}</td><td>${x.profit}</td></tr>`);
+
+ledger.innerHTML="<tr><th>Name</th><th>Amount</th><th>Status</th><th>Action</th></tr>";
+db.l.forEach((x,i)=>ledger.innerHTML+=`<tr><td>${x.name}</td><td>${x.amount}</td><td>${x.status}</td><td>${x.status=="Unpaid"?'<button onclick="markPaid('+i+')">Paid</button>':''}</td></tr>`);
+
+let sp=db.p.reduce((a,b)=>a+b.profit,0);
+let tp=db.t.reduce((a,b)=>a+b.profit,0);
+let ex=db.e.reduce((a,b)=>a+b.amount,0);
+let ud=db.l.filter(x=>x.status=="Unpaid").reduce((a,b)=>a+b.amount,0);
+
+dash.innerHTML=`Sales Profit: ${sp}<br>Transaction Profit: ${tp}<br>Expenses: ${ex}<br>Outstanding Udhaar: ${ud}<br><b>Net Profit: ${sp+tp-ex}</b>`;
+
+reports.innerHTML=`Daily/Weekly/Monthly Summary<br>Sales Profit: ${sp}<br>Transaction Profit: ${tp}<br>Net Profit: ${sp+tp-ex}`;
+
+let low=db.p.filter(x=>x.q<=3);
+alerts.innerHTML=low.length?low.map(x=>x.n+" ("+x.q+" left)").join("<br>"):"No low stock";
+}
+render();
+</script>
+</body></html>
